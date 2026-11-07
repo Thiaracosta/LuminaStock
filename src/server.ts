@@ -14,6 +14,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/produtos', produtoRoutes);
 app.use('/pedidos', pedidoRoutes);
 
+/* istanbul ignore next */
 if (process.env.NODE_ENV !== 'test') {
   app.listen(3000, () => {
     console.log('API LuminaStock rodando na porta 3000 🚀');
