@@ -7,6 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum StatusPedido {
+  EM_PREPARACAO
+  EM_FABRICACAO
+  EM_ACABAMENTO
+  EMBALANDO
+  ENTREGUE
+  CANCELADO
+}
+
 model Produto {
   id         String   @id @default(uuid())
   nome       String
@@ -16,9 +25,11 @@ model Produto {
 }
 
 model Pedido {
-  id         String   @id @default(uuid())
-  quantidade Int
-  data       DateTime @default(now())
-  produtoId  String
-  produto    Produto  @relation(fields: [produtoId], references: [id])
+  id              String       @id @default(uuid())
+  quantidade      Int
+  status          StatusPedido @default(EM_PREPARACAO)
+  dataPedido      DateTime     @default(now())
+  dataFinalizacao DateTime?
+  produtoId       String
+  produto         Produto      @relation(fields: [produtoId], references: [id])
 }
