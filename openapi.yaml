@@ -1,0 +1,149 @@
+openapi: 3.0.0
+info:
+  title: LuminaStock API
+  version: 1.0.0
+  description: API de gerenciamento de estoque e pedidos para estudio de impressao 3D (Lumina 3D).
+servers:
+  - url: /
+    description: Servidor Atual (Local ou Producao)
+  - url: http://localhost:3000
+    description: Servidor Local de Desenvolvimento
+
+paths:
+  /:
+    get:
+      summary: Health Check da API
+      tags:
+        - Health Check
+      responses:
+        '200':
+          description: API operacional
+
+  /produtos:
+    get:
+      summary: Lista todos os produtos em estoque
+      tags:
+        - Produtos
+      responses:
+        '200':
+          description: Lista de produtos retornada com sucesso
+        '500':
+          description: Erro interno no servidor
+
+    post:
+      summary: Cadastra um novo produto no estoque
+      tags:
+        - Produtos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nome
+                - preco
+                - quantidade
+              properties:
+                nome:
+                  type: string
+                  example: Chaveiro Articulado Dragao 3D
+                descricao:
+                  type: string
+                  example: Impresso em PLA Silk Multicolor
+                preco:
+                  type: number
+                  example: 25.90
+                quantidade:
+                  type: integer
+                  example: 15
+      responses:
+        '201':
+          description: Produto cadastrado com sucesso
+        '400':
+          description: Erro de validacao nos dados enviados (Zod)
+        '500':
+          description: Erro interno no servidor
+
+  /pedidos:
+    get:
+      summary: Lista todos os pedidos com os dados do produto vinculado
+      tags:
+        - Pedidos
+      responses:
+        '200':
+          description: Lista de pedidos retornada com sucesso
+        '500':
+          description: Erro interno no servidor
+
+    post:
+      summary: Cria um novo pedido e desconta automaticamente do estoque
+      tags:
+        - Pedidos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - produtoId
+                - quantidade
+              properties:
+                produtoId:
+                  type: string
+                  format: uuid
+                  example: 550e8400-e29b-41d4-a716-446655440000
+                quantidade:
+                  type: integer
+                  example: 2
+      responses:
+        '201':
+          description: Pedido criado e estoque atualizado via transacao atomica
+        '400':
+          description: Estoque insuficiente ou dados invalidos
+        '404':
+          description: Produto nao encontrado
+        '500':
+          description: Erro interno no servidor
+
+  /pedidos/{id}/status:
+    patch:
+      summary: Atualiza o status de um pedido (e registra dataFinalizacao se concluido)
+      tags:
+        - Pedidos
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - PENDENTE
+                    - EM_PRODUCAO
+                    - ENVIADO
+                    - ENTREGUE
+                    - CANCELADO
+                  example: ENTREGUE
+      responses:
+        '200':
+          description: Status do pedido atualizado com sucesso
+        '400':
+          description: Status invalido
+        '404':
+          description: Pedido nao encontrado
+        '500':
+          description: Erro interno no servidor
