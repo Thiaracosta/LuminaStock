@@ -19,6 +19,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/prisma.ts',
+    '!src/swagger.ts',
     '!src/tests/**'
   ],
   coverageThreshold: {
