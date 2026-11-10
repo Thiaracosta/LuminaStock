@@ -13,11 +13,17 @@ export const options = {
 };
 
 export default function () {
-  const res = http.get(`${BASE_URL}/produtos`);
-  
-  check(res, {
-    'status code é 200': (r) => r.status === 200,
+
+  const resProdutos = http.get(`${BASE_URL}/produtos`);
+  check(resProdutos, {
+    'GET /produtos status 200': (r) => r.status === 200,
   });
-  
+
+
+  const resPedidos = http.get(`${BASE_URL}/pedidos`);
+  check(resPedidos, {
+    'GET /pedidos status 200': (r) => r.status === 200,
+  });
+
   sleep(1);
 }
