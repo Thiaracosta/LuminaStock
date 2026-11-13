@@ -1,68 +1,114 @@
-@'
-> **Nivel do Projeto Final:** **Projeto B** (API de Dominio Unico - Gestao de Estoque e Pedidos 3D)
-
+$bt = '```'
+$readme = @"
 # LuminaStock API
 
-![CI Pipeline](https://github.com/Thiaracosta/LuminaStock/actions/workflows/ci.yml/badge.svg)
+API RESTful para gerenciamento de estoque e controle de pedidos de producao, construida com foco em confiabilidade transacional (ACID), observabilidade, testes automatizados e containerizacao completa.
 
-API RESTful desenvolvida em **Node.js**, **TypeScript**, **Express**, **Prisma ORM** e **PostgreSQL** para controle de estoque de filamentos/pecas e gestao de pedidos de impressao 3D (**Lumina 3D**).
+---
 
-## 1. Arquitetura, SOLID e Design Patterns (M1)
-- **Separacao de Responsabilidades (SRP / Modularizacao de Rotas e Validacao):** As rotas (`produto.routes.ts` e `pedido.routes.ts`), a camada de acesso a dados (`prisma.ts`), a documentacao (`swagger.ts`) e a observabilidade (`logger.ts`) possuem fronteiras explicitas e desacopladas do ponto de entrada (`server.ts` vs `app.ts`), permitindo testes de integracao isolados em memoria.
-- **Database Pattern & Controle Transacional (Unit of Work / Atomic Transaction):** Na criacao de pedidos (`POST /pedidos`), foi aplicado o padrao de **Transacao Atomica (`prisma.$transaction`)** aliado ao decremento atomico no banco (`{ decrement: quantidade }`). Essa escolha garante que o registro do pedido e a baixa no estoque ocorram como uma unica unidade indivisivel (ACID), prevenindo *race conditions* e *overselling* (detalhado no [ADR 001](./docs/adr/001-transacao-atomica-estoque.md)).
-- **Fail-Fast Validation (Schema Pattern com Zod):** Todos os payloads de entrada sao validados estaticamente e em tempo de execucao via schemas do **Zod** antes de abrir transacoes no banco de dados.
+## Tecnologias Utilizadas
 
-## 2. Estrutura de Documentacao e Entregaveis (M1 a M4)
-- **Contrato OpenAPI 3.0 Estatico:** [`openapi.yaml`](./openapi.yaml) (e interface Swagger UI interativa em `/api-docs`)
-- **Registro de Decisao Arquitetural (ADR 001):** [`docs/adr/001-transacao-atomica-estoque.md`](./docs/adr/001-transacao-atomica-estoque.md)
-- **Relatorio de Desempenho e SLO (k6 Smoke Test):** [`docs/desempenho.md`](./docs/desempenho.md)
-- **Declaracao de Uso de IA:** [`docs/ia.md`](./docs/ia.md)
-- **Autoria e Contribuicoes:** [`CONTRIBUTORS.md`](./CONTRIBUTORS.md)
-- **Pipeline de CI (Lint + Testes + Coverage >90%):** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
+- **Runtime & Linguagem:** Node.js 20 + TypeScript
+- **Framework Web:** Express
+- **ORM & Banco de Dados:** Prisma ORM + PostgreSQL 15
+- **Validacao de Dados:** Zod
+- **Documentacao da API:** OpenAPI 3.0 / Swagger UI
+- **Logs Estruturados:** Pino
+- **Testes Unitarios e Integracao:** Jest + Supertest (100% Coverage)
+- **Testes de Carga:** Grafana k6
+- **Containerizacao & CI/CD:** Docker, Docker Compose e GitHub Actions
 
-## 3. Como Executar o Projeto Localmente
+---
 
-### Pre-requisitos
-- **Node.js** (v20+)
-- **Docker** e **Docker Compose**
-- **Grafana k6** (opcional, para rodar o teste de carga)
+## Arquitetura de Containers (C4 Model)
 
-### Passo a Passo
-1. **Clone o repositorio e instale as dependencias:**
+${bt}mermaid
+flowchart LR
+    User([Cliente / Avaliador]) -->|HTTP :3000| API[Container: luminastock_api - Node.js 20 + Express + Prisma]
+    K6([Grafana k6 - Smoke e Ramp Test]) -->|GET /health, /produtos, /pedidos| API
+    API -->|TCP :5432 - SELECT 1 e Transacoes ACID| DB[(Container: luminastock_db - PostgreSQL 15)]
+${bt}
 
-    git clone [https://github.com/Thiaracosta/LuminaStock.git](https://github.com/Thiaracosta/LuminaStock.git)
-    cd LuminaStock
-    npm install
+---
 
-2. **Configure as variaveis de ambiente:**
-   Copie o arquivo `.env.example` para `.env`:
+## Como Executar o Projeto (Docker Compose - Recomendado)
 
-    cp .env.example .env
+Com o **Docker Desktop** aberto, suba o banco de dados PostgreSQL e a API juntos com um unico comando:
 
-3. **Suba o banco de dados PostgreSQL com 1 comando (Docker Compose):**
+${bt}bash
+docker compose up -d --build
+${bt}
 
-    docker compose up -d
+O container da API aguardara o banco ficar saudavel (`service_healthy`), aplicara as migracoes do Prisma automaticamente (`npx prisma migrate deploy`) e ficara disponivel em:
 
-4. **Execute as migracoes do Prisma e inicie o servidor:**
+- **API Base URL:** `http://localhost:3000`
+- **Health Check:** `http://localhost:3000/health`
+- **Documentacao Interativa (Swagger UI):** `http://localhost:3000/api-docs`
 
-    npx prisma migrate dev
-    npm run dev
+---
 
-- **API disponivel em:** `http://localhost:3000`
-- **Documentacao Swagger UI:** `http://localhost:3000/api-docs`
+## Como Executar Localmente (Desenvolvimento)
 
-## 4. Como Rodar o Lint, Testes e Smoke Test (k6)
+1. Instale as dependencias:
+${bt}bash
+npm install
+${bt}
 
-- **Analise Estatica de Codigo (ESLint):**
+2. Suba o banco de dados e aplique as migracoes:
+${bt}bash
+docker compose up -d db
+npx prisma migrate dev
+${bt}
 
-    npm run lint
+3. Inicie o servidor em modo watch:
+${bt}bash
+npm run dev
+${bt}
 
-- **Testes Automatizados e Cobertura (Jest + Supertest - Meta >90%):**
+---
 
-    npm run test:cov
+## Endpoints Principais
 
-- **Smoke Test de Desempenho (k6 - SLO `p(95) < 500ms`):**
-  Com a API rodando em `http://localhost:3000`, execute em outro terminal:
+| Metodo | Rota | Descricao |
+|---|---|---|
+| GET | `/health` | Verifica status da API e conectividade ativa com o PostgreSQL (`SELECT 1`) |
+| POST | `/produtos` | Cadastra um novo produto no estoque |
+| GET | `/produtos` | Lista todos os produtos cadastrados |
+| POST | `/pedidos` | Cria um pedido abatendo o estoque em transacao atomica (`prisma.`$transaction) |
+| GET | `/pedidos` | Lista todos os pedidos com os dados do produto vinculado |
+| PATCH | `/pedidos/:id/status` | Atualiza o status de um pedido (`EM_PREPARACAO`, `CONCLUIDO`, `CANCELADO`) |
 
-    k6 run tests/smoke-test.js
-'@ | Set-Content -Path README.md -Encoding UTF8
+---
+
+## Qualidade, Testes e Cobertura (Jest)
+
+Para executar a suite de testes automatizados com verificacao de cobertura (meta global >= 90%, atual **100%**):
+
+${bt}bash
+npm run test:cov
+npm run lint
+${bt}
+
+---
+
+## Resultados do Teste de Carga (Grafana k6)
+
+Para executar o teste de carga com estagios de rampa (`ramp-up`, `plato` e `ramp-down`):
+
+${bt}bash
+k6 run tests/smoke-test.js
+${bt}
+
+- **Cenario:** Rampa de ate 5 VUs simultaneos por 30s (`10s ramp-up`, `15s plato`, `5s ramp-down`)
+- **Total de Requisicoes (`checks_total`):** 261 (100% de sucesso em `/health`, `/produtos` e `/pedidos`)
+- **Taxa de Falha (`http_req_failed`):** `0.00%` (meta: menor que 1%)
+- **Latencia p(95) (`http_req_duration`):** `147.01ms` (meta: menor que 500ms)
+
+---
+
+## Decisoes Arquiteturais (ADRs)
+
+- [ADR 001 - Controle de Concorrencia e Transacoes de Estoque](docs/adr/001-transacoes-estoque.md)
+- [ADR 002 - Containerizacao Completa da API, Healthcheck Ativo e Estrategia de Deploy](docs/adr/002-containerizacao-healthcheck-deploy.md)
+"@
+Set-Content -Path README.md -Value $readme -Encoding UTF8
