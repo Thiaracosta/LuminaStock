@@ -5,9 +5,11 @@ info:
   description: API de gerenciamento de estoque e pedidos para estudio de impressao 3D (Lumina 3D).
 servers:
   - url: /
-    description: Servidor Atual (Local ou Producao)
+    description: Servidor Atual
+  - url: https://luminastock-api.onrender.com
+    description: Producao (Render)
   - url: http://localhost:3000
-    description: Servidor Local de Desenvolvimento
+    description: Desenvolvimento Local
 
 paths:
   /:
@@ -19,6 +21,16 @@ paths:
         '200':
           description: API operacional
 
+  paths:
+  /health:
+    get:
+      summary: Verifica a saude da API e a conexao com o banco PostgreSQL
+      responses:
+        '200':
+          description: API e Banco de Dados operacionais
+        '503':
+          description: Falha de conexao com o Banco de Dados
+  
   /produtos:
     get:
       summary: Lista todos os produtos em estoque
