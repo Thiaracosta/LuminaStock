@@ -1,53 +1,50 @@
-@'
-# Relatorio de Desempenho e Smoke Test (k6) - LuminaStock API
+﻿# Relatorio de Desempenho e Testes de Carga (Grafana k6)
 
-## 1. Objetivo e SLO (Service Level Objective)
-Este documento registra as evidencias do teste de carga (*Smoke Test*) executado na API **LuminaStock** (Nivel: **Projeto B**), validando a estabilidade e a latencia dos endpoints principais de listagem de estoque (`GET /produtos`) e de pedidos (`GET /pedidos`) integrados ao PostgreSQL via Prisma ORM.
+## 1. Ambiente de Execucao
+- **Infraestrutura:** Ambiente totalmente containerizado via Docker Compose (luminastock_api + luminastock_db).
+- **Banco de Dados:** PostgreSQL 15 Alpine (com healthcheck nativo pg_isready).
+- **Ferramenta de Carga:** Grafana k6.
 
-- **SLO de Latencia Definido:** `p(95) < 500ms` (95% das requisicoes devem responder em menos de 500 milissegundos).
-- **SLO de Disponibilidade/Erros:** `http_req_failed < 1%` (taxa de falhas inferior a 1%).
+## 2. Perfil de Carga (Ramp-up, Plato e Ramp-down)
+O script 	ests/smoke-test.js executa tres estagios progressivos simulando trafego concorrente nos endpoints /health, /produtos e /pedidos:
 
-## 2. Configuracao do Cenario de Teste
-- **Ferramenta:** Grafana k6 (`tests/smoke-test.js`)
-- **Usuarios Virtuais Simultaneos (VUs):** 5 VUs constantes
-- **Duracao:** 30 segundos
-- **Endpoints Alvo:** `GET /produtos` e `GET /pedidos`
+- **Ramp-up (Subida):** 0 a 5 usuarios virtuais (VUs) em 10s.
+- **Plato (Sustentacao):** 5 VUs simultaneos constantes por 15s.
+- **Ramp-down (Descida):** 5 a 0 VUs em 5s.
+- **SLAs (Thresholds):**
+  - http_req_duration: p(95) < 500ms
+  - http_req_failed: ate < 0.01 (menos de 1% de erro)
 
-Como reproduzir o teste localmente (com o banco no Docker e a API rodando):
-`k6 run tests/smoke-test.js`
+## 3. Resultados Obtidos
 
-## 3. Resultados Obtidos (Medicao Real)
+| Metrica | Resultado Obtido | Meta (Threshold) | Status |
+|---|---|---|---|
+| **Checks Totais (checks_total)** | 261 / 261 (100% sucesso) | 100% | Aprovado |
+| **Taxa de Falha (http_req_failed)** | 0.00% (0 falhas) | Menor que 1% | Aprovado |
+| **Tempo Medio (vg)** | 56.49ms | - | Aprovado |
+| **Mediana (med)** | 29.03ms | - | Aprovado |
+| **Percentil 90 (p90)** | 108.13ms | - | Aprovado |
+| **Percentil 95 (p95)** | 147.01ms | Menor que 500ms | Aprovado |
+| **Vazao (http_reqs)** | 8.46 req/s (87 iteracoes) | - | Aprovado |
 
-| Metrica | Valor Medido | Meta (Threshold) | Status |
-| :--- | :--- | :--- | :--- |
-| **Total de Requisicoes (`http_reqs`)** | 252 (`8.17 req/s`) | - | Aprovado |
-| **Tempo Medio (`avg`)** | `86.85 ms` | - | Aprovado |
-| **Mediana (`med` / p50)** | `20.88 ms` | - | Aprovado |
-| **Tempo Minimo (`min`)** | `5.59 ms` | - | Aprovado |
-| **Percentil 90 (`p90`)** | `185.21 ms` | - | Aprovado |
-| **Percentil 95 (`p95`)** | **`242.74 ms`** | **`< 500 ms`** | **Aprovado** |
-| **Taxa de Falhas (`http_req_failed`)** | **`0.00%` (0/252)** | **`< 1.00%`** | **Aprovado** |
-| **Checks (`GET /produtos` e `GET /pedidos`)** | `100.00%` (252/252) | `100%` | **Aprovado** |
+## 4. Saida Oficial do Terminal
 
-## 4. Saida Bruta do Terminal (k6 Output)
+```text
+  █ THRESHOLDS 
+    http_req_duration
+    ✓ 'p(95)<500' p(95)=147.01ms
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
 
-    THRESHOLDS 
-    http_req_duration: ✓ 'p(95)<500' p(95)=242.74ms
-    http_req_failed..: ✓ 'rate<0.01' rate=0.00%
+  █ TOTAL RESULTS 
+    checks_total.......: 261     8.468149/s
+    checks_succeeded...: 100.00% 261 out of 261
+    checks_failed......: 0.00%   0 out of 261
 
-    TOTAL RESULTS 
-    checks_total.......: 252     8.177574/s
-    checks_succeeded...: 100.00% 252 out of 252
-    checks_failed......: 0.00%   0 out of 252
-
+    ✓ GET /health status 200
     ✓ GET /produtos status 200
     ✓ GET /pedidos status 200
+```
 
-    HTTP
-    http_req_duration..............: avg=86.85ms min=5.59ms med=20.88ms max=1.89s p(90)=185.21ms p(95)=242.74ms
-    http_req_failed................: 0.00% 0 out of 252
-    http_reqs......................: 252   8.177574/s
-
-## 5. Conclusao
-A API atendeu com folga ao SLO estabelecido nos dois endpoints principais, mantendo mediana de resposta de **20.88ms** e **p95 de 242.74ms** (abaixo do limite de 500ms) com **0% de falhas** em 252 requisicoes consecutivas.
-'@ | Set-Content -Path docs/desempenho.md -Encoding UTF8
+## 5. Conclusao Tecnica
+Mesmo com a sobrecarga de rede entre containers Docker e a execucao ativa da query SELECT 1 no PostgreSQL a cada ciclo pela rota /health, o percentil 95 (147.01ms) permaneceu 70% abaixo do limite maximo estabelecido (500ms), com zero falhas sob concorrencia.
