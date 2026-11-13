@@ -7,6 +7,8 @@ jest.mock('../../src/prisma', () => ({
     produto: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
   },
 }));
@@ -74,6 +76,77 @@ describe('Rotas de Produtos (/produtos) e Health Check', () => {
       const res = await request(app).get('/produtos');
       expect(res.status).toBe(500);
       expect(res.body.erro).toBe('Erro interno ao listar os produtos');
+    });
+  });
+
+  describe('PATCH /produtos/:id/estoque-preco', () => {
+    it('deve adicionar estoque e atualizar preco via query params com sucesso (200)', async () => {
+      (prisma.produto.findUnique as jest.Mock).mockResolvedValue({
+        id: 'p1',
+        nome: 'Filamento PLA',
+        preco: 120,
+        quantidade: 5,
+      });
+      const mockAtualizado = { id: 'p1', nome: 'Filamento PLA', preco: 135.5, quantidade: 15 };
+      (prisma.produto.update as jest.Mock).mockResolvedValue(mockAtualizado);
+
+      const res = await request(app)
+        .patch('/produtos/p1/estoque-preco?quantidadeAdicionar=10&preco=135.5');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual(mockAtualizado);
+      expect(prisma.produto.update).toHaveBeenCalledWith({
+        where: { id: 'p1' },
+        data: {
+          quantidade: { increment: 10 },
+          preco: 135.5,
+        },
+      });
+    });
+
+    it('deve atualizar apenas a quantidade quando preco nao for informado (200)', async () => {
+      (prisma.produto.findUnique as jest.Mock).mockResolvedValue({ id: 'p1', quantidade: 5 });
+      (prisma.produto.update as jest.Mock).mockResolvedValue({ id: 'p1', quantidade: 8 });
+
+      const res = await request(app)
+        .patch('/produtos/p1/estoque-preco?quantidadeAdicionar=3&preco=');
+
+      expect(res.status).toBe(200);
+    });
+
+    it('deve atualizar apenas o preco via body quando quantidadeAdicionar nao for informada (200)', async () => {
+      (prisma.produto.findUnique as jest.Mock).mockResolvedValue({ id: 'p1', preco: 100 });
+      (prisma.produto.update as jest.Mock).mockResolvedValue({ id: 'p1', preco: 110 });
+
+      const res = await request(app)
+        .patch('/produtos/p1/estoque-preco?quantidadeAdicionar=')
+        .send({ preco: 110 });
+
+      expect(res.status).toBe(200);
+    });
+
+    it('deve retornar 400 se nenhum parametro for enviado ou se valores forem invalidos', async () => {
+      const resVazio = await request(app).patch('/produtos/p1/estoque-preco');
+      expect(resVazio.status).toBe(400);
+
+      const resInvalido = await request(app).patch('/produtos/p1/estoque-preco?quantidadeAdicionar=-5');
+      expect(resInvalido.status).toBe(400);
+    });
+
+    it('deve retornar 404 se o produto nao existir', async () => {
+      (prisma.produto.findUnique as jest.Mock).mockResolvedValue(null);
+
+      const res = await request(app).patch('/produtos/id-inexistente/estoque-preco?preco=99.9');
+      expect(res.status).toBe(404);
+      expect(res.body.erro).toBe('Produto não encontrado');
+    });
+
+    it('deve retornar 500 se o banco falhar ao atualizar estoque/preco', async () => {
+      (prisma.produto.findUnique as jest.Mock).mockRejectedValue(new Error('DB Error'));
+
+      const res = await request(app).patch('/produtos/p1/estoque-preco?quantidadeAdicionar=5');
+      expect(res.status).toBe(500);
+      expect(res.body.erro).toBe('Erro interno ao atualizar o produto');
     });
   });
 });
