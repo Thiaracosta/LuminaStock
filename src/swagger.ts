@@ -2,7 +2,7 @@ export const swaggerDocument = {
   openapi: '3.0.0',
   info: {
     title: 'LuminaStock API',
-    version: '1.1.0',
+    version: '1.1.1',
     description: 'API de controle de estoque e gestão de pedidos para estúdio de impressão 3D (Lumina 3D).',
   },
   servers: [

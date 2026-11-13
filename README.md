@@ -123,6 +123,13 @@ k6 run tests/smoke-test.js
 
 ---
 
+## 🔮 Visão de Futuro (Roadmap v2.0)
+
+- [ ] **Controle de Estoque de Matéria-Prima:** Gerenciamento de insumos de produção (rolos de filamento em gramas, primers, tintas e materiais de acabamento) vinculados à ficha técnica de cada peça 3D.
+- [ ] **Acompanhamento de Vendas e Inteligência Financeira:** Novos endpoints de métricas (`/relatorios/vendas` e `/relatorios/lucro`) para acompanhar o volume total vendido por período, ticket médio, ranking de peças com maior saída e cálculo automático de **lucro líquido** (cruzando o valor dos pedidos `ENTREGUE` com o custo de matéria-prima e tempo de máquina).
+
+---
+
 ## Planos Futuros (Roadmap)
 
 Como evolução contínua do produto nas próximas *releases*, estão planejadas as seguintes implementações:
