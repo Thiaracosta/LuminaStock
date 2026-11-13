@@ -8,3 +8,20 @@ services:
       POSTGRES_DB: luminastock_db
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thiara -d luminastock_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: luminastock_api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://thiara:senha123@db:5432/luminastock_db?schema=public"
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
