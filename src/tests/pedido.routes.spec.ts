@@ -29,7 +29,7 @@ describe('Rotas de Pedidos (/pedidos)', () => {
         id: 'p1',
         nome: 'Chaveiro 3D',
         preco: 15,
-        quantidade: 10
+        quantidade: 10,
       });
       const mockPedido = { id: 'ped1', produtoId: 'p1', quantidade: 3, status: 'EM_PREPARACAO' };
       (prisma.$transaction as jest.Mock).mockResolvedValue([mockPedido, {}]);
@@ -64,7 +64,7 @@ describe('Rotas de Pedidos (/pedidos)', () => {
     it('deve retornar 400 se o estoque for insuficiente', async () => {
       (prisma.produto.findUnique as jest.Mock).mockResolvedValue({
         id: 'p1',
-        quantidade: 1
+        quantidade: 1,
       });
 
       const res = await request(app)
@@ -104,12 +104,12 @@ describe('Rotas de Pedidos (/pedidos)', () => {
   });
 
   describe('PATCH /pedidos/:id/status', () => {
-    it('deve atualizar para status em andamento com dataFinalizacao null (200)', async () => {
+    it('deve atualizar para status em andamento com dataFinalizacao null via body (200)', async () => {
       (prisma.pedido.findUnique as jest.Mock).mockResolvedValue({ id: 'ped1', status: 'EM_PREPARACAO' });
       (prisma.pedido.update as jest.Mock).mockResolvedValue({
         id: 'ped1',
         status: 'EM_FABRICACAO',
-        dataFinalizacao: null
+        dataFinalizacao: null,
       });
 
       const res = await request(app)
@@ -120,20 +120,47 @@ describe('Rotas de Pedidos (/pedidos)', () => {
       expect(res.body.dataFinalizacao).toBeNull();
     });
 
-    it('deve preencher dataFinalizacao quando ENTREGUE ou CANCELADO (200)', async () => {
+    it('deve atualizar status via query param (Select do Swagger) e preencher dataFinalizacao quando ENTREGUE (200)', async () => {
       (prisma.pedido.findUnique as jest.Mock).mockResolvedValue({ id: 'ped1', status: 'EMBALANDO' });
       (prisma.pedido.update as jest.Mock).mockResolvedValue({
         id: 'ped1',
         status: 'ENTREGUE',
-        dataFinalizacao: new Date().toISOString()
+        dataFinalizacao: new Date().toISOString(),
       });
 
       const res = await request(app)
-        .patch('/pedidos/ped1/status')
-        .send({ status: 'ENTREGUE' });
+        .patch('/pedidos/ped1/status?status=ENTREGUE');
 
       expect(res.status).toBe(200);
       expect(res.body.dataFinalizacao).toBeTruthy();
+    });
+
+    it('deve estornar o estoque e preencher dataFinalizacao quando CANCELADO (200)', async () => {
+      (prisma.pedido.findUnique as jest.Mock).mockResolvedValue({
+        id: 'ped1',
+        produtoId: 'p1',
+        quantidade: 2,
+        status: 'EM_PREPARACAO',
+      });
+      (prisma.$transaction as jest.Mock).mockResolvedValue([
+        {
+          id: 'ped1',
+          produtoId: 'p1',
+          quantidade: 2,
+          status: 'CANCELADO',
+          dataFinalizacao: new Date().toISOString(),
+        },
+        { id: 'p1', quantidade: 12 },
+      ]);
+
+      const res = await request(app)
+        .patch('/pedidos/ped1/status')
+        .send({ status: 'CANCELADO' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('CANCELADO');
+      expect(res.body.dataFinalizacao).toBeTruthy();
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
 
     it('deve retornar 400 para status inválido', async () => {

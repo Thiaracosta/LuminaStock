@@ -20,7 +20,7 @@ export const swaggerDocument = {
     },
   ],
   tags: [
-    { name: 'Health Check', description: 'Verificação de status do servidor' },
+    { name: 'Health Check', description: 'Verificação de status do servidor e banco de dados' },
     { name: 'Produtos', description: 'Gerenciamento de itens e filamentos em estoque' },
     { name: 'Pedidos', description: 'Fluxo de pedidos, baixa automática de estoque e status de produção' },
   ],
@@ -37,6 +37,25 @@ export const swaggerDocument = {
                 example: { status: 'ok', servico: 'LuminaStock API rodando 🚀' },
               },
             },
+          },
+        },
+      },
+    },
+    '/health': {
+      get: {
+        tags: ['Health Check'],
+        summary: 'Verifica a saúde da API e conectividade ativa com o PostgreSQL',
+        responses: {
+          200: {
+            description: 'API e Banco de Dados operacionais',
+            content: {
+              'application/json': {
+                example: { status: 'ok', database: 'connected' },
+              },
+            },
+          },
+          503: {
+            description: 'Falha de comunicação com o Banco de Dados',
           },
         },
       },
@@ -95,6 +114,66 @@ export const swaggerDocument = {
           },
           500: {
             description: 'Erro interno ao listar os produtos',
+          },
+        },
+      },
+    },
+    '/produtos/{id}/estoque-preco': {
+      patch: {
+        tags: ['Produtos'],
+        summary: 'Adiciona unidades ao estoque e/ou altera o preço do produto (Sem JSON)',
+        description: 'Informe a quantidade a somar ao estoque atual e/ou o novo preço diretamente nos campos abaixo.',
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            description: 'ID (UUID) do produto',
+            schema: { type: 'string', format: 'uuid' },
+          },
+          {
+            name: 'quantidadeAdicionar',
+            in: 'query',
+            required: false,
+            description: 'Quantidade de unidades para somar ao estoque atual (ex: 10)',
+            schema: { type: 'integer', minimum: 1 },
+          },
+          {
+            name: 'preco',
+            in: 'query',
+            required: false,
+            description: 'Novo preço unitário do produto (ex: 99.90)',
+            schema: { type: 'number', minimum: 0.01 },
+          },
+        ],
+        responses: {
+          200: {
+            description: 'Estoque e/ou preço atualizados com sucesso',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Produto' },
+              },
+            },
+          },
+          400: {
+            description: 'Parâmetros inválidos ou ausentes',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErroResponse' },
+              },
+            },
+          },
+          404: {
+            description: 'Produto não encontrado',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErroResponse' },
+                example: { erro: 'Produto não encontrado' },
+              },
+            },
+          },
+          500: {
+            description: 'Erro interno ao atualizar o produto',
           },
         },
       },
@@ -169,8 +248,8 @@ export const swaggerDocument = {
     '/pedidos/{id}/status': {
       patch: {
         tags: ['Pedidos'],
-        summary: 'Atualiza o status de produção/entrega de um pedido',
-        description: 'Se o status for alterado para ENTREGUE ou CANCELADO, o campo dataFinalizacao é preenchido automaticamente com a data/hora atual.',
+        summary: 'Atualiza o status de produção/entrega de um pedido (Via Select)',
+        description: 'Selecione o novo status na caixa de seleção. Se alterado para ENTREGUE ou CANCELADO, o campo dataFinalizacao é preenchido automaticamente.',
         parameters: [
           {
             name: 'id',
@@ -179,17 +258,24 @@ export const swaggerDocument = {
             description: 'ID (UUID) do pedido',
             schema: { type: 'string', format: 'uuid' },
           },
-        ],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                $ref: '#/components/schemas/AtualizarStatusInput',
-              },
+          {
+            name: 'status',
+            in: 'query',
+            required: true,
+            description: 'Selecione o novo status do pedido',
+            schema: {
+              type: 'string',
+              enum: [
+                'EM_PREPARACAO',
+                'EM_FABRICACAO',
+                'EM_ACABAMENTO',
+                'EMBALANDO',
+                'ENTREGUE',
+                'CANCELADO',
+              ],
             },
           },
-        },
+        ],
         responses: {
           200: {
             description: 'Status do pedido atualizado com sucesso',

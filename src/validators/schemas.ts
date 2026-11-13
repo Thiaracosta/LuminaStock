@@ -13,7 +13,19 @@ export const criarProdutoSchema = z.object({
     .number({ message: 'A quantidade deve ser um número válido' })
     .int({ message: 'A quantidade deve ser um número inteiro' })
     .min(0, { message: 'A quantidade não pode ser negativa' })
-    .default(0)
+    .default(0),
+});
+
+export const atualizarEstoquePrecoSchema = z.object({
+  quantidadeAdicionar: z.coerce
+    .number({ message: 'A quantidade deve ser um número válido' })
+    .int({ message: 'A quantidade deve ser um número inteiro' })
+    .positive({ message: 'A quantidade a adicionar deve ser maior que zero' })
+    .optional(),
+  preco: z.coerce
+    .number({ message: 'O preço deve ser um número válido' })
+    .positive({ message: 'O preço deve ser maior que zero' })
+    .optional(),
 });
 
 export const criarPedidoSchema = z.object({
@@ -24,11 +36,11 @@ export const criarPedidoSchema = z.object({
   quantidade: z.coerce
     .number({ message: 'A quantidade deve ser um número válido' })
     .int({ message: 'A quantidade deve ser um número inteiro' })
-    .positive({ message: 'A quantidade do pedido deve ser maior que zero' })
+    .positive({ message: 'A quantidade do pedido deve ser maior que zero' }),
 });
 
 export const atualizarStatusSchema = z.object({
   status: z.nativeEnum(StatusPedido, {
-    message: 'Status inválido'
-  })
+    message: 'Status inválido',
+  }),
 });
