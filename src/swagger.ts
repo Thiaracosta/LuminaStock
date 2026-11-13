@@ -2,10 +2,18 @@ export const swaggerDocument = {
   openapi: '3.0.0',
   info: {
     title: 'LuminaStock API',
-    version: '1.0.0',
+    version: '1.1.0',
     description: 'API de controle de estoque e gestão de pedidos para estúdio de impressão 3D (Lumina 3D).',
   },
   servers: [
+    {
+      url: '/',
+      description: 'Servidor Atual (Automatico - Render ou Local)',
+    },
+    {
+      url: 'https://luminastock-api.onrender.com',
+      description: 'Servidor de Producao (Render)',
+    },
     {
       url: 'http://localhost:3000',
       description: 'Servidor Local',
